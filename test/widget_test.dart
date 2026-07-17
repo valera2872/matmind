@@ -28,4 +28,26 @@ void main() {
     expect(find.text('Напряжение'), findsOneWidget);
     expect(find.text('Фокус'), findsOneWidget);
   });
+
+  testWidgets('every parent situation opens a guide', (tester) async {
+    await tester.pumpWidget(const MatMindApp());
+    await tester.tap(find.text('Я родитель'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Скоро старт'));
+    await tester.pumpAndSettle();
+    expect(find.text('Сейчас ребёнку нужна опора, а не дополнительный тренер'), findsOneWidget);
+    await tester.tap(find.text('Вернуться к ситуациям'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Не хочет ехать'));
+    await tester.pumpAndSettle();
+    expect(find.text('Не называйте отказ ленью, пока не поняли причину'), findsOneWidget);
+    await tester.tap(find.text('Вернуться к ситуациям'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Я сам на взводе'));
+    await tester.pumpAndSettle();
+    expect(find.text('Сначала снизьте собственное напряжение'), findsOneWidget);
+  });
 }

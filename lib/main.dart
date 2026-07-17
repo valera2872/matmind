@@ -68,6 +68,9 @@ enum AppPage {
   profile,
   parentHome,
   parentLoss,
+  parentBeforeStart,
+  parentAvoidCompetition,
+  parentSelfReset,
 }
 
 enum ActivationState { high, working, low }
@@ -233,6 +236,9 @@ class _MatMindFlowState extends State<MatMindFlow> {
         AppPage.profile => _profile(),
         AppPage.parentHome => _parentHome(),
         AppPage.parentLoss => _parentLoss(),
+        AppPage.parentBeforeStart => _parentBeforeStart(),
+        AppPage.parentAvoidCompetition => _parentAvoidCompetition(),
+        AppPage.parentSelfReset => _parentSelfReset(),
       };
 
   void _back() {
@@ -286,6 +292,9 @@ class _MatMindFlowState extends State<MatMindFlow> {
         _show(AppPage.journalHome);
         break;
       case AppPage.parentLoss:
+      case AppPage.parentBeforeStart:
+      case AppPage.parentAvoidCompetition:
+      case AppPage.parentSelfReset:
         _show(AppPage.parentHome);
         break;
       case AppPage.welcome:
@@ -375,7 +384,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
 
   Widget _welcome() {
     return _shell(
-      eyebrow: 'АЛЬФА 0.3.0',
+      eyebrow: 'АЛЬФА 0.4.0',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1211,7 +1220,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
   Widget _profile() {
     final age = switch (_ageBand) { 10 => '10–12 лет', 16 => '16–17 лет', _ => '13–15 лет' };
     return _shell(
-      eyebrow: 'АЛЬФА 0.3.0',
+      eyebrow: 'АЛЬФА 0.4.0',
       bottom: _athleteNav(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1467,9 +1476,27 @@ class _MatMindFlowState extends State<MatMindFlow> {
             color: rose,
             onTap: () => _show(AppPage.parentLoss),
           ),
-          _choiceCard(icon: Icons.timer_outlined, title: 'Скоро старт', subtitle: 'Не передать собственную тревогу', color: sand),
-          _choiceCard(icon: Icons.south_east, title: 'Не хочет ехать', subtitle: 'Различить страх, усталость, конфликт и боль', color: mint),
-          _choiceCard(icon: Icons.waves, title: 'Я сам на взводе', subtitle: 'Пауза перед разговором', color: mint),
+          _choiceCard(
+            icon: Icons.timer_outlined,
+            title: 'Скоро старт',
+            subtitle: 'Не передать собственную тревогу',
+            color: sand,
+            onTap: () => _show(AppPage.parentBeforeStart),
+          ),
+          _choiceCard(
+            icon: Icons.south_east,
+            title: 'Не хочет ехать',
+            subtitle: 'Различить страх, усталость, конфликт и боль',
+            color: mint,
+            onTap: () => _show(AppPage.parentAvoidCompetition),
+          ),
+          _choiceCard(
+            icon: Icons.waves,
+            title: 'Я сам на взводе',
+            subtitle: 'Пауза перед разговором',
+            color: mint,
+            onTap: () => _show(AppPage.parentSelfReset),
+          ),
           _notice('Личные записи спортсмена не открываются родителю автоматически — даже в семейном режиме.'),
         ],
       ),
@@ -1507,7 +1534,103 @@ class _MatMindFlowState extends State<MatMindFlow> {
             ),
           ),
           const SizedBox(height: 26),
-          _primaryButton('Понятно', () => _show(AppPage.welcome)),
+          _primaryButton('Вернуться к ситуациям', () => _show(AppPage.parentHome)),
+        ],
+      ),
+    );
+  }
+
+  Widget _parentBeforeStart() {
+    return _parentGuide(
+      eyebrow: 'ПЕРЕД СТАРТОМ',
+      title: 'Сейчас ребёнку нужна опора, а не дополнительный тренер',
+      subtitle: 'Даже полезный технический совет перед выходом может перегрузить внимание. Оставьте одну спокойную фразу и пространство для собственного плана.',
+      doTitle: 'Скажите коротко',
+      doText: '«Я рядом. Тебе сейчас нужна помощь или лучше дать тебе спокойно настроиться?»',
+      avoidTitle: 'Не добавляйте ставки',
+      avoidText: 'Не обещайте награду за победу, не напоминайте о затратах и не говорите «ты обязан», «не подведи» или «этого соперника ты должен проходить».',
+      actionTitle: 'Проверка родителя',
+      actionText: 'Опустите плечи, сделайте один обычный вдох и более длинный выдох. Говорите немного медленнее, чем хочется. Ребёнок считывает не только слова.',
+    );
+  }
+
+  Widget _parentAvoidCompetition() {
+    return _parentGuide(
+      eyebrow: 'НЕ ХОЧЕТ ЕХАТЬ',
+      title: 'Не называйте отказ ленью, пока не поняли причину',
+      subtitle: 'Избегание может означать страх поражения, давление, усталость, конфликт, травлю или физическую боль. Для разных причин нужны разные действия.',
+      doTitle: 'Начните с вопроса без ловушки',
+      doText: '«Я не буду сейчас уговаривать или ругать. Помоги понять: страшно, больно, устал, что-то произошло в клубе или причина пока непонятна?»',
+      avoidTitle: 'Не торгуйтесь сразу',
+      avoidText: 'Не обещайте подарок за участие и не угрожайте забрать спорт. Сначала выслушайте ответ. При боли или возможной травме участие нельзя использовать как проверку характера.',
+      actionTitle: 'Следующий шаг',
+      actionText: 'Если причина — страх, договоритесь об одном небольшом действии и разговоре с тренером. Если есть боль, травля, паника или устойчивый отказ — подключите подходящего взрослого или специалиста.',
+    );
+  }
+
+  Widget _parentSelfReset() {
+    return _parentGuide(
+      eyebrow: 'ПАУЗА ДЛЯ РОДИТЕЛЯ',
+      title: 'Сначала снизьте собственное напряжение',
+      subtitle: 'Поддержка становится трудной, когда вы сами мысленно уже проживаете поражение, несправедливое судейство или разговор с тренером.',
+      doTitle: 'Пауза на 30 секунд',
+      doText: 'Почувствуйте стопы. Расслабьте челюсть. Сделайте три обычных вдоха с немного более длинным выдохом. Назовите про себя: «Это моя тревога, ребёнку не нужно её нести».',
+      avoidTitle: 'Не разговаривайте на пике',
+      avoidText: 'Не выясняйте отношения с тренером, судьёй или ребёнком, пока хочется говорить громко, доказывать и немедленно исправлять ситуацию.',
+      actionTitle: 'Одна родительская задача',
+      actionText: 'На ближайшие десять минут выберите только одну роль: быть рядом, помочь с водой и экипировкой или дать пространство. Анализ можно провести позже.',
+    );
+  }
+
+  Widget _parentGuide({
+    required String eyebrow,
+    required String title,
+    required String subtitle,
+    required String doTitle,
+    required String doText,
+    required String avoidTitle,
+    required String avoidText,
+    required String actionTitle,
+    required String actionText,
+  }) {
+    return _shell(
+      back: true,
+      eyebrow: eyebrow,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(title, subtitle),
+          _parentGuideBlock(Icons.chat_bubble_outline, doTitle, doText, mint),
+          _parentGuideBlock(Icons.do_not_disturb_alt_outlined, avoidTitle, avoidText, rose),
+          _parentGuideBlock(Icons.arrow_forward, actionTitle, actionText, sand),
+          const SizedBox(height: 12),
+          _primaryButton('Вернуться к ситуациям', () => _show(AppPage.parentHome)),
+        ],
+      ),
+    );
+  }
+
+  Widget _parentGuideBlock(IconData icon, String title, String text, Color color) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: ink),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: ink, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 5),
+                Text(text, style: const TextStyle(color: ink, height: 1.45)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1548,7 +1671,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
     required String subtitle,
     required Color color,
     bool dark = false,
-    VoidCallback? onTap,
+    required VoidCallback onTap,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 11),
@@ -1599,7 +1722,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
                   ],
                 ),
               ),
-              if (onTap != null) Icon(Icons.chevron_right, color: dark ? Colors.white70 : blue),
+              Icon(Icons.chevron_right, color: dark ? Colors.white70 : blue),
             ],
           ),
         ),
