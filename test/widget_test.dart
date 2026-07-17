@@ -1,81 +1,52 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matmind/main.dart';
+import 'package:matmind/src/repository.dart';
 
 void main() {
-  testWidgets('MATMIND opens the role selection screen', (tester) async {
-    await tester.pumpWidget(const MatMindApp());
-    expect(find.text('Тренируй не только технику'), findsOneWidget);
+  testWidgets('welcome screen explains adaptive bout cycle', (tester) async {
+    await tester.pumpWidget(
+      SvoyaBorbaApp(repository: MemoryAppRepository()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Своя борьба'), findsWidgets);
+    expect(
+      find.textContaining('учится на том, что произошло после неё'),
+      findsOneWidget,
+    );
     expect(find.text('Я спортсмен'), findsOneWidget);
     expect(find.text('Я родитель'), findsOneWidget);
   });
 
-  testWidgets('athlete can open the adaptive check-in', (tester) async {
-    await tester.pumpWidget(const MatMindApp());
+  testWidgets('quick start launches practice after three taps', (tester) async {
+    await tester.pumpWidget(
+      SvoyaBorbaApp(repository: MemoryAppRepository()),
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Я спортсмен'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('13–15 лет'));
+    await tester.tap(find.text('10–12 лет'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Продолжить'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Открыть MATMIND'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Собрать персональную практику'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Настроим тренировку под тебя сейчас'), findsOneWidget);
-    expect(find.text('Энергия'), findsOneWidget);
-    expect(find.text('Напряжение'), findsOneWidget);
-    expect(find.text('Фокус'), findsOneWidget);
-  });
-
-  testWidgets('every parent situation opens a guide', (tester) async {
-    await tester.pumpWidget(const MatMindApp());
-    await tester.tap(find.text('Я родитель'));
+    await tester.ensureVisible(find.text('Открыть приложение'));
+    await tester.tap(find.text('Открыть приложение'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Скоро старт'));
+    expect(find.text('Помочь за 20 секунд'), findsOneWidget);
+    await tester.tap(find.text('Помочь за 20 секунд'));
     await tester.pumpAndSettle();
-    expect(find.text('Сейчас ребёнку нужна опора, а не дополнительный тренер'), findsOneWidget);
-    await tester.ensureVisible(find.text('Вернуться к ситуациям'));
+    await tester.tap(find.text('Собран и готов'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Вернуться к ситуациям'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Слишком много мыслей'));
+    await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.ensureVisible(find.text('Не хочет ехать'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Не хочет ехать'));
-    await tester.pumpAndSettle();
-    expect(find.text('Не называйте отказ ленью, пока не поняли причину'), findsOneWidget);
-    await tester.ensureVisible(find.text('Вернуться к ситуациям'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Вернуться к ситуациям'));
-    await tester.pumpAndSettle();
+    expect(find.text('Быстрый вход в свою борьбу'), findsOneWidget);
+    expect(find.text('БЫСТРЫЙ РЕЖИМ · 3-Е НАЖАТИЕ'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Я сам на взводе'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Я сам на взводе'));
-    await tester.pumpAndSettle();
-    expect(find.text('Сначала снизьте собственное напряжение'), findsOneWidget);
-  });
-
-  testWidgets('athlete can open the pressure laboratory', (tester) async {
-    await tester.pumpWidget(const MatMindApp());
-    await tester.tap(find.text('Я спортсмен'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('13–15 лет'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Продолжить'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Открыть MATMIND'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Тренировки'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Лаборатория давления'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Тренируй решение, пока время идёт'), findsOneWidget);
-    expect(find.text('Начать первый раунд'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
   });
 }
