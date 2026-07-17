@@ -50,6 +50,9 @@ enum AppPage {
   age,
   sport,
   athleteHome,
+  adaptiveCheckIn,
+  adaptivePlan,
+  adaptiveReview,
   checkIn,
   practice,
   goal,
@@ -68,6 +71,26 @@ enum AppPage {
 }
 
 enum ActivationState { high, working, low }
+
+enum TrainingMoment { ordinary, beforeTraining, beforeCompetition, afterError }
+
+class AdaptiveProtocol {
+  const AdaptiveProtocol({
+    required this.title,
+    required this.why,
+    required this.duration,
+    required this.steps,
+    required this.cue,
+    required this.transferTask,
+  });
+
+  final String title;
+  final String why;
+  final String duration;
+  final List<(String, String)> steps;
+  final String cue;
+  final String transferTask;
+}
 
 class MatMindFlow extends StatefulWidget {
   const MatMindFlow({super.key});
@@ -93,6 +116,14 @@ class _MatMindFlowState extends State<MatMindFlow> {
   bool _playing = false;
   String? _trainingTitle;
   String? _avoidReason;
+  TrainingMoment? _trainingMoment;
+  double _energy = 3;
+  double _tension = 3;
+  double _focus = 3;
+  int? _beforeControl;
+  int? _afterControl;
+  int _adaptiveSessions = 0;
+  int _helpfulSessions = 0;
   final Set<String> _completedTrainings = {};
   final List<String> _journalNotes = [];
   final TextEditingController _journalController = TextEditingController();
@@ -184,6 +215,9 @@ class _MatMindFlowState extends State<MatMindFlow> {
         AppPage.age => _age(),
         AppPage.sport => _sport(),
         AppPage.athleteHome => _athleteHome(),
+        AppPage.adaptiveCheckIn => _adaptiveCheckIn(),
+        AppPage.adaptivePlan => _adaptivePlan(),
+        AppPage.adaptiveReview => _adaptiveReview(),
         AppPage.checkIn => _checkIn(),
         AppPage.practice => _practice(),
         AppPage.goal => _goalPage(),
@@ -212,6 +246,15 @@ class _MatMindFlowState extends State<MatMindFlow> {
         break;
       case AppPage.athleteHome:
         _show(AppPage.welcome);
+        break;
+      case AppPage.adaptiveCheckIn:
+        _show(AppPage.athleteHome);
+        break;
+      case AppPage.adaptivePlan:
+        _show(AppPage.adaptiveCheckIn);
+        break;
+      case AppPage.adaptiveReview:
+        _show(AppPage.adaptivePlan);
         break;
       case AppPage.checkIn:
         _show(AppPage.athleteHome);
@@ -332,7 +375,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
 
   Widget _welcome() {
     return _shell(
-      eyebrow: 'АЛЬФА 0.2.0',
+      eyebrow: 'АЛЬФА 0.3.0',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -436,6 +479,313 @@ class _MatMindFlowState extends State<MatMindFlow> {
     );
   }
 
+  AdaptiveProtocol get _adaptiveProtocol {
+    if (_trainingMoment == TrainingMoment.afterError) {
+      return const AdaptiveProtocol(
+        title: 'Reset: вернуться за 10 секунд',
+        why: 'Ты выбрал момент после ошибки. Сейчас важнее восстановить действие, а не разбирать прошлый эпизод.',
+        duration: '60–90 секунд',
+        steps: [
+          ('Отметь факт', 'Скажи без оценки: «ошибка была». Не добавляй «я слабый» или «всё кончено».'),
+          ('Верни тело', 'Один длинный выдох. Почувствуй опору. Освободи плечи и верни подбородок.'),
+          ('Назови действие', 'Выбери один глагол на ближайшие две секунды: защитить, встать, вернуть, продолжить.'),
+        ],
+        cue: 'Ошибка была. Следующее действие — сейчас.',
+        transferTask: 'На тренировке попроси партнёра начать из неудобной позиции и трижды отработай reset после условной ошибки.',
+      );
+    }
+    if (_tension >= 4) {
+      return const AdaptiveProtocol(
+        title: 'Снять лишнее, сохранить силу',
+        why: 'Напряжение сейчас выше рабочего уровня. Не нужно становиться полностью спокойным — достаточно вернуть управление телом.',
+        duration: '2 минуты',
+        steps: [
+          ('Опора', 'На пять секунд перенеси внимание в стопы и давление пола.'),
+          ('Выдох', 'Сделай четыре обычных вдоха и немного более длинных выдоха. Без глубокого форсированного дыхания.'),
+          ('Первый эпизод', 'Представь только стойку, дистанцию и первый контакт — без результата всей схватки.'),
+        ],
+        cue: 'Не убрать волнение. Направить его в первый контакт.',
+        transferTask: 'Перед ближайшим раундом оцени напряжение ещё раз и войди только с одной процессуальной задачей.',
+      );
+    }
+    if (_energy <= 2) {
+      return const AdaptiveProtocol(
+        title: 'Включить тело без паники',
+        why: 'Энергии мало. Вместо мотивационных лозунгов добавим короткое движение и ясную атакующую задачу.',
+        duration: '90 секунд',
+        steps: [
+          ('Разбуди тело', 'Десять секунд пружинь на стопах, разомни кисти и сделай два резких, но контролируемых выдоха.'),
+          ('Вспомни удачный вход', 'На десять секунд восстанови один эпизод, где ты действовал решительно.'),
+          ('Команда', 'Скажи вслух один конкретный глагол: «сблизиться», «взять захват» или «двигаться».'),
+        ],
+        cue: 'Не ждать настроения. Начать движение.',
+        transferTask: 'Первую минуту тренировки отслеживай только активные стопы и инициативу первого контакта.',
+      );
+    }
+    if (_focus <= 2) {
+      return const AdaptiveProtocol(
+        title: 'Сузить внимание до одного сигнала',
+        why: 'Внимание рассыпается. Сейчас полезнее один внешний ориентир, чем попытка контролировать всё сразу.',
+        duration: '90 секунд',
+        steps: [
+          ('Назови лишнее', 'Одной фразой назови, куда уходит внимание: соперник, зрители, результат или прошлые ошибки.'),
+          ('Выбери сигнал', 'Оставь один наблюдаемый ориентир: дистанция, положение рук или давление соперника.'),
+          ('Репетиция', 'Три раза представь: замечаю сигнал → сразу выполняю выбранное действие.'),
+        ],
+        cue: 'Один сигнал. Одно действие.',
+        transferTask: 'В следующем раунде после каждой остановки возвращайся к выбранному внешнему сигналу.',
+      );
+    }
+    return const AdaptiveProtocol(
+      title: 'Репетиция первого эпизода',
+      why: 'Состояние близко к рабочему. Его не нужно чинить — закрепим ясное начало и устойчивость после помехи.',
+      duration: '2 минуты',
+      steps: [
+        ('Первый проход', 'Представь начало от первого лица: стойка, дистанция, первый контакт и своё действие.'),
+        ('Добавь помеху', 'Теперь представь, что соперник первым навязал захват. Увидь свой спокойный ответ.'),
+        ('Ключ', 'Сожми и расслабь кулак, затем произнеси короткую рабочую команду.'),
+      ],
+      cue: 'Я готов не к идеальному сценарию, а к следующему действию.',
+      transferTask: 'Перед ближайшим раундом повтори ключ и после раунда отметь, вспомнил ли ты процессуальную задачу.',
+    );
+  }
+
+  void _startAdaptiveCheckIn() {
+    setState(() {
+      _trainingMoment = null;
+      _energy = 3;
+      _tension = 3;
+      _focus = 3;
+      _beforeControl = null;
+      _afterControl = null;
+      _page = AppPage.adaptiveCheckIn;
+    });
+  }
+
+  Widget _adaptiveCheckIn() {
+    const moments = {
+      TrainingMoment.ordinary: ('Обычный день', Icons.calendar_today_outlined),
+      TrainingMoment.beforeTraining: ('Перед тренировкой', Icons.sports_martial_arts),
+      TrainingMoment.beforeCompetition: ('Перед стартом', Icons.timer_outlined),
+      TrainingMoment.afterError: ('После ошибки', Icons.replay),
+    };
+    return _shell(
+      back: true,
+      eyebrow: 'АДАПТИВНЫЙ ЧЕК-ИН',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(
+            'Настроим тренировку под тебя сейчас',
+            'Это не тест характера и не диагноз. Ответы нужны, чтобы выбрать подходящий навык и нагрузку.',
+          ),
+          _sectionLabel('ГДЕ ТЫ СЕЙЧАС'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final item in moments.entries)
+                ChoiceChip(
+                  avatar: Icon(item.value.$2, size: 18),
+                  label: Text(item.value.$1),
+                  selected: _trainingMoment == item.key,
+                  onSelected: (_) => setState(() => _trainingMoment = item.key),
+                ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _metricSlider('Энергия', 'тело выключено', 'слишком много', _energy, (value) => setState(() => _energy = value)),
+          _metricSlider('Напряжение', 'расслаблен', 'зажат', _tension, (value) => setState(() => _tension = value)),
+          _metricSlider('Фокус', 'рассыпается', 'очень точный', _focus, (value) => setState(() => _focus = value)),
+          const SizedBox(height: 6),
+          _sectionLabel('НАСКОЛЬКО ТЫ СЕЙЧАС УПРАВЛЯЕШЬ СВОИМ СОСТОЯНИЕМ?'),
+          _ratingRow(_beforeControl, (value) => setState(() => _beforeControl = value)),
+          const SizedBox(height: 22),
+          _primaryButton(
+            'Собрать мою тренировку',
+            _trainingMoment == null || _beforeControl == null ? null : () => _show(AppPage.adaptivePlan),
+          ),
+          _notice('Алгоритм покажет, почему выбрал этот протокол. Победа или поражение не используются как оценка твоей психики.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _adaptivePlan() {
+    final protocol = _adaptiveProtocol;
+    return _shell(
+      back: true,
+      eyebrow: 'ТВОЙ ПЛАН · ${protocol.duration}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _pill('Подобрано по текущему состоянию'),
+          const SizedBox(height: 14),
+          _heading(protocol.title, protocol.why),
+          for (var i = 0; i < protocol.steps.length; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFD4DFE2)),
+                borderRadius: BorderRadius.circular(19),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: mint,
+                    foregroundColor: ink,
+                    child: Text('${i + 1}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(protocol.steps[i].$1, style: const TextStyle(color: ink, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(protocol.steps[i].$2, style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: mint, borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _sectionLabel('РАБОЧАЯ ФРАЗА'),
+                Text(protocol.cue, style: const TextStyle(color: ink, fontSize: 18, height: 1.4, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          _primaryButton('Выполнил — проверить эффект', () => _show(AppPage.adaptiveReview)),
+        ],
+      ),
+    );
+  }
+
+  Widget _adaptiveReview() {
+    final protocol = _adaptiveProtocol;
+    return _shell(
+      back: true,
+      eyebrow: 'ПРОВЕРКА ЭФФЕКТА',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(
+            'Стало легче управлять состоянием?',
+            'Нам не нужна похвала приложению. Честный ответ помогает понять, что работает именно для тебя.',
+          ),
+          _sectionLabel('ДО ПРАКТИКИ'),
+          Text('${_beforeControl ?? 0} из 5', style: const TextStyle(color: ink, fontSize: 24, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 20),
+          _sectionLabel('СЕЙЧАС'),
+          _ratingRow(_afterControl, (value) => setState(() => _afterControl = value)),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: sand, borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _sectionLabel('ПЕРЕНОС НА КОВЁР'),
+                Text(protocol.transferTask, style: const TextStyle(color: ink, height: 1.45, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          _primaryButton(
+            'Сохранить результат',
+            _afterControl == null
+                ? null
+                : () {
+                    final before = _beforeControl ?? 0;
+                    final after = _afterControl!;
+                    setState(() {
+                      _adaptiveSessions++;
+                      if (after > before) _helpfulSessions++;
+                      _journalNotes.add('${protocol.title}: управление состоянием $before/5 → $after/5. Перенос: ${protocol.transferTask}');
+                      _page = AppPage.athleteHome;
+                    });
+                  },
+          ),
+          _notice('Если несколько попыток подряд не помогают или состояние ухудшается, приложение не должно усиливать нагрузку: нужен разговор с доверенным взрослым, тренером или специалистом.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricSlider(
+    String title,
+    String lowLabel,
+    String highLabel,
+    double value,
+    ValueChanged<double> onChanged,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFD4DFE2)),
+        borderRadius: BorderRadius.circular(19),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(title, style: const TextStyle(color: ink, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              Text('${value.round()}/5', style: const TextStyle(color: blue, fontWeight: FontWeight.w900)),
+            ],
+          ),
+          Slider(value: value, min: 1, max: 5, divisions: 4, onChanged: onChanged),
+          Row(
+            children: [
+              Text(lowLabel, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 11)),
+              const Spacer(),
+              Text(highLabel, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 11)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ratingRow(int? selected, ValueChanged<int> onChanged) {
+    return Row(
+      children: [
+        for (var value = 1; value <= 5; value++) ...[
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: value == 5 ? 0 : 7),
+              child: OutlinedButton(
+                onPressed: () => onChanged(value),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: selected == value ? ink : Colors.white,
+                  foregroundColor: selected == value ? Colors.white : ink,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                ),
+                child: Text('$value', style: const TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _athleteHome() {
     final age = switch (_ageBand) { 10 => '10–12', 16 => '16–17', _ => '13–15' };
     return _shell(
@@ -445,9 +795,21 @@ class _MatMindFlowState extends State<MatMindFlow> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _heading(
-            'Что происходит сейчас?',
-            'Выбери ситуацию. Долгий тест проходить не придётся.',
+            'Твоя тренировка сегодня',
+            'Сначала короткая настройка под текущее состояние. Ниже — помощь в конкретной ситуации.',
           ),
+          _choiceCard(
+            icon: Icons.auto_awesome_outlined,
+            title: _adaptiveSessions == 0 ? 'Собрать персональную практику' : 'Обновить персональную практику',
+            subtitle: _adaptiveSessions == 0
+                ? 'Чек-ин 45 секунд → протокол → проверка эффекта'
+                : 'Выполнено: $_adaptiveSessions · помогло: $_helpfulSessions',
+            color: const Color(0xFF2A6D7D),
+            dark: true,
+            onTap: _startAdaptiveCheckIn,
+          ),
+          const SizedBox(height: 10),
+          _sectionLabel('ПОМОЩЬ ПРЯМО СЕЙЧАС'),
           _choiceCard(
             icon: Icons.timer_outlined,
             title: 'Я выхожу через пять минут',
@@ -849,7 +1211,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
   Widget _profile() {
     final age = switch (_ageBand) { 10 => '10–12 лет', 16 => '16–17 лет', _ => '13–15 лет' };
     return _shell(
-      eyebrow: 'АЛЬФА 0.2.0',
+      eyebrow: 'АЛЬФА 0.3.0',
       bottom: _athleteNav(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -858,6 +1220,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
           _profileRow(Icons.cake_outlined, 'Возрастная версия', age),
           _profileRow(Icons.sports_martial_arts, 'Виды спорта', _sports.join(', ')),
           _profileRow(Icons.psychology_outlined, 'Освоено тренировок', '${_completedTrainings.length}'),
+          _profileRow(Icons.auto_awesome_outlined, 'Адаптивных практик', '$_adaptiveSessions · помогло $_helpfulSessions'),
           _profileRow(Icons.article_outlined, 'Записей в дневнике', '${_journalNotes.length}'),
           const SizedBox(height: 12),
           _notice('Дневник пока хранится только в памяти текущей alpha-сессии. В следующей версии добавим защищённое локальное сохранение.'),
