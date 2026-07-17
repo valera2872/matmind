@@ -1,7 +1,7 @@
 name: matmind
-description: Psychological training for young grappling athletes and their parents.
+description: "Своя борьба — персональная психологическая подготовка юных борцов."
 publish_to: "none"
-version: 0.5.0+5
+version: 0.8.0+8
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_tts: ^4.2.3
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:
