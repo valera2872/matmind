@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() => runApp(const MatMindApp());
 
@@ -63,6 +64,9 @@ enum AppPage {
   avoidCompetition,
   trainingHome,
   trainingDetail,
+  pressureIntro,
+  pressureRound,
+  pressureResult,
   journalHome,
   journalNew,
   profile,
@@ -95,6 +99,24 @@ class AdaptiveProtocol {
   final String transferTask;
 }
 
+class PressureScenario {
+  const PressureScenario({
+    required this.title,
+    required this.situation,
+    required this.options,
+    required this.bestOption,
+    required this.feedback,
+    required this.cue,
+  });
+
+  final String title;
+  final String situation;
+  final List<String> options;
+  final int bestOption;
+  final String feedback;
+  final String cue;
+}
+
 class MatMindFlow extends StatefulWidget {
   const MatMindFlow({super.key});
 
@@ -115,6 +137,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
   ActivationState? _activation;
   String? _goal;
   Timer? _timer;
+  Timer? _pressureTimer;
   int _seconds = 0;
   bool _playing = false;
   String? _trainingTitle;
@@ -127,9 +150,54 @@ class _MatMindFlowState extends State<MatMindFlow> {
   int? _afterControl;
   int _adaptiveSessions = 0;
   int _helpfulSessions = 0;
+  int _pressureRoundIndex = 0;
+  int _pressureSeconds = 8;
+  int _pressureScore = 0;
+  int _pressureRuns = 0;
+  int? _pressureChoice;
+  bool _pressureAnswered = false;
   final Set<String> _completedTrainings = {};
   final List<String> _journalNotes = [];
   final TextEditingController _journalController = TextEditingController();
+
+  static const pressureScenarios = [
+    PressureScenario(
+      title: 'Соперник захватил инициативу',
+      situation: 'Сигнал к началу. Соперник сразу идёт вперёд, зал шумит, и ты чувствуешь, что тело зажалось.',
+      options: [
+        'Попытаться срочно перестать волноваться',
+        'Один выдох → опора → первый контакт',
+        'Посмотреть на тренера и ждать указания',
+      ],
+      bestOption: 1,
+      feedback: 'Под давлением полезнее короткая связка из тела и действия. Попытка полностью убрать волнение часто только отнимает внимание.',
+      cue: 'Выдох. Опора. Контакт.',
+    ),
+    PressureScenario(
+      title: 'Первая ошибка',
+      situation: 'Ты пропустил первый балл. В голове появляется: «Опять всё испортил». Схватка продолжается.',
+      options: [
+        'Разобрать ошибку прямо сейчас',
+        'Резко броситься отыгрываться любой ценой',
+        'Назвать факт и выбрать действие на две секунды',
+      ],
+      bestOption: 2,
+      feedback: 'Разбор нужен позже. Во время схватки задача reset — вернуть доступ к ближайшему контролируемому действию.',
+      cue: 'Ошибка была. Следующее действие.',
+    ),
+    PressureScenario(
+      title: 'Слишком много команд',
+      situation: 'Тренер кричит два указания, соперник меняет позицию, а ты уже не понимаешь, за чем следить.',
+      options: [
+        'Выбрать один внешний сигнал и одно действие',
+        'Стараться удержать в голове все команды',
+        'Перестать слышать и действовать наугад',
+      ],
+      bestOption: 0,
+      feedback: 'При перегрузке внимание нужно сузить. Один наблюдаемый сигнал помогает снова связать восприятие с действием.',
+      cue: 'Один сигнал. Одно действие.',
+    ),
+  ];
 
   static const Map<int, List<String>> scripts = {
     10: [
@@ -158,12 +226,14 @@ class _MatMindFlowState extends State<MatMindFlow> {
   @override
   void dispose() {
     _timer?.cancel();
+    _pressureTimer?.cancel();
     _journalController.dispose();
     super.dispose();
   }
 
   void _show(AppPage page) {
     if (page != AppPage.practice) _stopTimer();
+    if (page != AppPage.pressureRound) _stopPressureTimer();
     setState(() => _page = page);
   }
 
@@ -185,6 +255,11 @@ class _MatMindFlowState extends State<MatMindFlow> {
     _timer?.cancel();
     _timer = null;
     if (mounted) setState(() => _playing = false);
+  }
+
+  void _stopPressureTimer() {
+    _pressureTimer?.cancel();
+    _pressureTimer = null;
   }
 
   void _preparePractice() {
@@ -231,6 +306,9 @@ class _MatMindFlowState extends State<MatMindFlow> {
         AppPage.avoidCompetition => _avoidCompetition(),
         AppPage.trainingHome => _trainingHome(),
         AppPage.trainingDetail => _trainingDetail(),
+        AppPage.pressureIntro => _pressureIntro(),
+        AppPage.pressureRound => _pressureRound(),
+        AppPage.pressureResult => _pressureResult(),
         AppPage.journalHome => _journalHome(),
         AppPage.journalNew => _journalNew(),
         AppPage.profile => _profile(),
@@ -287,6 +365,13 @@ class _MatMindFlowState extends State<MatMindFlow> {
         break;
       case AppPage.trainingDetail:
         _show(AppPage.trainingHome);
+        break;
+      case AppPage.pressureIntro:
+      case AppPage.pressureResult:
+        _show(AppPage.trainingHome);
+        break;
+      case AppPage.pressureRound:
+        _show(AppPage.pressureIntro);
         break;
       case AppPage.journalNew:
         _show(AppPage.journalHome);
@@ -384,7 +469,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
 
   Widget _welcome() {
     return _shell(
-      eyebrow: 'АЛЬФА 0.4.0',
+      eyebrow: 'АЛЬФА 0.5.0',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1060,6 +1145,251 @@ class _MatMindFlowState extends State<MatMindFlow> {
     );
   }
 
+  void _startPressureLab() {
+    _pressureTimer?.cancel();
+    setState(() {
+      _pressureRoundIndex = 0;
+      _pressureScore = 0;
+      _pressureChoice = null;
+      _pressureAnswered = false;
+    });
+    _beginPressureRound();
+  }
+
+  void _beginPressureRound() {
+    _pressureTimer?.cancel();
+    setState(() {
+      _pressureSeconds = 8;
+      _pressureChoice = null;
+      _pressureAnswered = false;
+      _page = AppPage.pressureRound;
+    });
+    HapticFeedback.mediumImpact();
+    _pressureTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _pressureAnswered) return;
+      if (_pressureSeconds <= 1) {
+        _pressureTimer?.cancel();
+        setState(() {
+          _pressureSeconds = 0;
+          _pressureAnswered = true;
+          _pressureChoice = -1;
+        });
+        HapticFeedback.heavyImpact();
+      } else {
+        setState(() => _pressureSeconds--);
+      }
+    });
+  }
+
+  void _answerPressure(int choice) {
+    if (_pressureAnswered) return;
+    _pressureTimer?.cancel();
+    final scenario = pressureScenarios[_pressureRoundIndex];
+    setState(() {
+      _pressureChoice = choice;
+      _pressureAnswered = true;
+      if (choice == scenario.bestOption) _pressureScore++;
+    });
+    choice == scenario.bestOption ? HapticFeedback.lightImpact() : HapticFeedback.selectionClick();
+  }
+
+  void _advancePressureLab() {
+    if (_pressureRoundIndex >= pressureScenarios.length - 1) {
+      _show(AppPage.pressureResult);
+      return;
+    }
+    setState(() => _pressureRoundIndex++);
+    _beginPressureRound();
+  }
+
+  Widget _pressureIntro() {
+    return _shell(
+      back: true,
+      eyebrow: 'ЛАБОРАТОРИЯ ДАВЛЕНИЯ',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _pill('3 раунда · около 2 минут'),
+          const SizedBox(height: 14),
+          _heading(
+            'Тренируй решение, пока время идёт',
+            'Ты увидишь три борцовские ситуации. На ответ будет восемь секунд. Цель — не угадать красивую фразу, а быстрее возвращаться к следующему действию.',
+          ),
+          _parentGuideBlock(
+            Icons.timer_outlined,
+            'Ограничение времени',
+            'Таймер создаёт небольшую, безопасную нагрузку на внимание. Если время закончится — это часть тренировки, а не провал.',
+            sand,
+          ),
+          _parentGuideBlock(
+            Icons.psychology_outlined,
+            'Без оценки личности',
+            'Результат показывает только знакомство с конкретным алгоритмом. Он не измеряет характер, смелость или «ментальную силу».',
+            mint,
+          ),
+          const SizedBox(height: 12),
+          _primaryButton('Начать первый раунд', _startPressureLab),
+        ],
+      ),
+    );
+  }
+
+  Widget _pressureRound() {
+    final scenario = pressureScenarios[_pressureRoundIndex];
+    final timedOut = _pressureChoice == -1;
+    return _shell(
+      back: true,
+      dark: !_pressureAnswered,
+      eyebrow: 'РАУНД ${_pressureRoundIndex + 1} ИЗ ${pressureScenarios.length}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(
+                  value: _pressureAnswered ? 1 : _pressureSeconds / 8,
+                  minHeight: 7,
+                  borderRadius: BorderRadius.circular(20),
+                  backgroundColor: _pressureAnswered ? const Color(0xFFD4DFE2) : Colors.white12,
+                  color: _pressureAnswered ? blue : const Color(0xFFB7E2D8),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                _pressureAnswered ? 'СТОП' : '$_pressureSeconds',
+                style: TextStyle(
+                  color: _pressureAnswered ? ink : Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          Text(
+            scenario.title,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: _pressureAnswered ? ink : Colors.white),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            scenario.situation,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: _pressureAnswered ? ink : Colors.white70),
+          ),
+          const SizedBox(height: 24),
+          for (var i = 0; i < scenario.options.length; i++)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              child: OutlinedButton(
+                onPressed: _pressureAnswered ? null : () => _answerPressure(i),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  backgroundColor: _pressureAnswered
+                      ? i == scenario.bestOption
+                          ? mint
+                          : _pressureChoice == i
+                              ? rose
+                              : Colors.white
+                      : Colors.white.withValues(alpha: .09),
+                  foregroundColor: _pressureAnswered ? ink : Colors.white,
+                  disabledForegroundColor: ink,
+                  side: BorderSide(
+                    color: _pressureAnswered
+                        ? i == scenario.bestOption
+                            ? const Color(0xFF77AA9B)
+                            : const Color(0xFFD4DFE2)
+                        : Colors.white30,
+                  ),
+                  padding: const EdgeInsets.all(17),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(scenario.options[i], style: const TextStyle(fontWeight: FontWeight.w700, height: 1.35))),
+                    if (_pressureAnswered && i == scenario.bestOption) const Icon(Icons.check_circle, color: Color(0xFF2F6B58)),
+                  ],
+                ),
+              ),
+            ),
+          if (_pressureAnswered) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(color: timedOut ? sand : mint, borderRadius: BorderRadius.circular(20)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    timedOut
+                        ? 'Время закончилось — алгоритм можно натренировать'
+                        : _pressureChoice == scenario.bestOption
+                            ? 'Рабочее решение'
+                            : 'Полезная коррекция',
+                    style: const TextStyle(color: ink, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(scenario.feedback, style: const TextStyle(color: ink, height: 1.45)),
+                  const SizedBox(height: 10),
+                  Text('Ключ: «${scenario.cue}»', style: const TextStyle(color: ink, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            _primaryButton(
+              _pressureRoundIndex == pressureScenarios.length - 1 ? 'Посмотреть результат' : 'Следующий раунд',
+              _advancePressureLab,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _pressureResult() {
+    final message = switch (_pressureScore) {
+      3 => 'Алгоритмы уже хорошо узнаются под ограничением времени.',
+      2 => 'Основа есть. Один из алгоритмов стоит повторить ещё раз.',
+      _ => 'Сейчас важнее знакомство, а не счёт. Повтор сделает решения доступнее под давлением.',
+    };
+    return _shell(
+      back: true,
+      eyebrow: 'РАЗБОР ТРЕНИРОВКИ',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading('$_pressureScore из ${pressureScenarios.length} рабочих решений', message),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: mint, borderRadius: BorderRadius.circular(22)),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Три ключа', style: TextStyle(color: ink, fontWeight: FontWeight.w900)),
+                SizedBox(height: 10),
+                Text('1. Выдох → опора → контакт\n2. Ошибка была → следующее действие\n3. Один сигнал → одно действие', style: TextStyle(color: ink, height: 1.65, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _notice('Перенос на ковёр: попроси тренера или партнёра три раза неожиданно дать сигнал «reset» во время лёгкого раунда. На сигнал выполни один из трёх алгоритмов.'),
+          const SizedBox(height: 20),
+          _primaryButton('Сохранить тренировку', () {
+            setState(() {
+              _pressureRuns++;
+              _completedTrainings.add('Лаборатория давления');
+              _journalNotes.add('Лаборатория давления: $_pressureScore из ${pressureScenarios.length} рабочих решений. Следующий шаг: повторить reset с неожиданным сигналом на ковре.');
+            });
+            _show(AppPage.trainingHome);
+          }),
+          TextButton(onPressed: _startPressureLab, child: const Text('Повторить три раунда')),
+        ],
+      ),
+    );
+  }
+
   Widget _trainingHome() {
     const trainings = [
       ('Фокус под давлением', '3 минуты', Icons.center_focus_strong, 'Сужаем внимание до контролируемой задачи.'),
@@ -1075,6 +1405,16 @@ class _MatMindFlowState extends State<MatMindFlow> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _heading('Психологические тренировки', 'Короткие упражнения между обычными тренировками — не только перед соревнованием.'),
+          _choiceCard(
+            icon: Icons.speed,
+            title: 'Лаборатория давления',
+            subtitle: _pressureRuns == 0 ? '3 раунда · таймер · решение под помехой' : 'Пройдено: $_pressureRuns · повторить под нагрузкой',
+            color: const Color(0xFF2A6D7D),
+            dark: true,
+            onTap: () => _show(AppPage.pressureIntro),
+          ),
+          const SizedBox(height: 8),
+          _sectionLabel('СПОКОЙНАЯ ОТРАБОТКА'),
           for (final item in trainings)
             _choiceCard(
               icon: item.$3,
@@ -1220,7 +1560,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
   Widget _profile() {
     final age = switch (_ageBand) { 10 => '10–12 лет', 16 => '16–17 лет', _ => '13–15 лет' };
     return _shell(
-      eyebrow: 'АЛЬФА 0.4.0',
+      eyebrow: 'АЛЬФА 0.5.0',
       bottom: _athleteNav(3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1230,6 +1570,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
           _profileRow(Icons.sports_martial_arts, 'Виды спорта', _sports.join(', ')),
           _profileRow(Icons.psychology_outlined, 'Освоено тренировок', '${_completedTrainings.length}'),
           _profileRow(Icons.auto_awesome_outlined, 'Адаптивных практик', '$_adaptiveSessions · помогло $_helpfulSessions'),
+          _profileRow(Icons.speed, 'Тренировок под давлением', '$_pressureRuns'),
           _profileRow(Icons.article_outlined, 'Записей в дневнике', '${_journalNotes.length}'),
           const SizedBox(height: 12),
           _notice('Дневник пока хранится только в памяти текущей alpha-сессии. В следующей версии добавим защищённое локальное сохранение.'),

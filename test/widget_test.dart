@@ -58,4 +58,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Сначала снизьте собственное напряжение'), findsOneWidget);
   });
+
+  testWidgets('athlete can open the pressure laboratory', (tester) async {
+    await tester.pumpWidget(const MatMindApp());
+    await tester.tap(find.text('Я спортсмен'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('13–15 лет'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Продолжить'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Открыть MATMIND'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Тренировки'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Лаборатория давления'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Тренируй решение, пока время идёт'), findsOneWidget);
+    expect(find.text('Начать первый раунд'), findsOneWidget);
+  });
 }
