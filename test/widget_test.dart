@@ -37,15 +37,23 @@ void main() {
     await tester.tap(find.text('Скоро старт'));
     await tester.pumpAndSettle();
     expect(find.text('Сейчас ребёнку нужна опора, а не дополнительный тренер'), findsOneWidget);
+    await tester.ensureVisible(find.text('Вернуться к ситуациям'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Вернуться к ситуациям'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Не хочет ехать'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Не хочет ехать'));
     await tester.pumpAndSettle();
     expect(find.text('Не называйте отказ ленью, пока не поняли причину'), findsOneWidget);
+    await tester.ensureVisible(find.text('Вернуться к ситуациям'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Вернуться к ситуациям'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Я сам на взводе'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Я сам на взводе'));
     await tester.pumpAndSettle();
     expect(find.text('Сначала снизьте собственное напряжение'), findsOneWidget);
