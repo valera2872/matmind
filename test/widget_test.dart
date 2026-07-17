@@ -15,6 +15,7 @@ void main() {
     await tester.tap(find.text('Я спортсмен'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('13–15 лет'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Продолжить'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Открыть MATMIND'));
