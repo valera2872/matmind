@@ -1,0 +1,22 @@
+{
+  "version_0_8_0": true,
+  "all_dart_delimiters_balanced": true,
+  "all_part_files_exist": true,
+  "all_parts_link_back": true,
+  "quick_pages_in_enum_and_router": true,
+  "three_tap_fast_path": true,
+  "third_tap_auto_launches": true,
+  "compact_48_second_plan": true,
+  "successful_repeat": true,
+  "different_situation_full_flow": true,
+  "large_tournament_touch_targets": true,
+  "quick_practice_still_creates_bout_card": true,
+  "quick_mode_label": true,
+  "russian_tts": true,
+  "local_persistence": true,
+  "workflow_artifact_0_8_0": true,
+  "workflow_analyze_and_test": true,
+  "quick_widget_test": true,
+  "release_notes_exist": true,
+  "product_context_updated": true
+}

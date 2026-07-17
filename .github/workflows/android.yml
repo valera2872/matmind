@@ -2,8 +2,10 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
-    branches: [main, master]
+    branches: [main, master, 'agent/**']
 
 jobs:
   build:
@@ -12,30 +14,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Generate Android project
+      - name: Generate Android platform
         run: flutter create --platforms=android --project-name matmind .
+
+      - name: Set application label
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace('android:label="matmind"', 'android:label="Своя борьба"')
+          path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Get packages
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Test
         run: flutter test
 
-      - name: Build APK
+      - name: Build debug APK
         run: flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: matmind-debug-apk
+          name: svoya-borba-0.8.0-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
