@@ -54,6 +54,15 @@ enum AppPage {
   practice,
   goal,
   complete,
+  strongOpponent,
+  resetAfterError,
+  afterLoss,
+  avoidCompetition,
+  trainingHome,
+  trainingDetail,
+  journalHome,
+  journalNew,
+  profile,
   parentHome,
   parentLoss,
 }
@@ -82,6 +91,11 @@ class _MatMindFlowState extends State<MatMindFlow> {
   Timer? _timer;
   int _seconds = 0;
   bool _playing = false;
+  String? _trainingTitle;
+  String? _avoidReason;
+  final Set<String> _completedTrainings = {};
+  final List<String> _journalNotes = [];
+  final TextEditingController _journalController = TextEditingController();
 
   static const Map<int, List<String>> scripts = {
     10: [
@@ -110,6 +124,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
   @override
   void dispose() {
     _timer?.cancel();
+    _journalController.dispose();
     super.dispose();
   }
 
@@ -173,6 +188,15 @@ class _MatMindFlowState extends State<MatMindFlow> {
         AppPage.practice => _practice(),
         AppPage.goal => _goalPage(),
         AppPage.complete => _complete(),
+        AppPage.strongOpponent => _strongOpponent(),
+        AppPage.resetAfterError => _resetAfterError(),
+        AppPage.afterLoss => _afterLoss(),
+        AppPage.avoidCompetition => _avoidCompetition(),
+        AppPage.trainingHome => _trainingHome(),
+        AppPage.trainingDetail => _trainingDetail(),
+        AppPage.journalHome => _journalHome(),
+        AppPage.journalNew => _journalNew(),
+        AppPage.profile => _profile(),
         AppPage.parentHome => _parentHome(),
         AppPage.parentLoss => _parentLoss(),
       };
@@ -200,6 +224,23 @@ class _MatMindFlowState extends State<MatMindFlow> {
         break;
       case AppPage.complete:
         _show(AppPage.goal);
+        break;
+      case AppPage.strongOpponent:
+      case AppPage.resetAfterError:
+      case AppPage.afterLoss:
+      case AppPage.avoidCompetition:
+        _show(AppPage.athleteHome);
+        break;
+      case AppPage.trainingHome:
+      case AppPage.journalHome:
+      case AppPage.profile:
+        _show(AppPage.athleteHome);
+        break;
+      case AppPage.trainingDetail:
+        _show(AppPage.trainingHome);
+        break;
+      case AppPage.journalNew:
+        _show(AppPage.journalHome);
         break;
       case AppPage.parentLoss:
         _show(AppPage.parentHome);
@@ -291,7 +332,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
 
   Widget _welcome() {
     return _shell(
-      eyebrow: 'АЛЬФА 0.1.0',
+      eyebrow: 'АЛЬФА 0.2.0',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -399,15 +440,7 @@ class _MatMindFlowState extends State<MatMindFlow> {
     final age = switch (_ageBand) { 10 => '10–12', 16 => '16–17', _ => '13–15' };
     return _shell(
       eyebrow: '$age лет · ${_sports.first}',
-      bottom: NavigationBar(
-        selectedIndex: 0,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.adjust), label: 'Сейчас'),
-          NavigationDestination(icon: Icon(Icons.psychology_outlined), label: 'Тренировки'),
-          NavigationDestination(icon: Icon(Icons.article_outlined), label: 'Дневник'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Профиль'),
-        ],
-      ),
+      bottom: _athleteNav(0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -428,26 +461,436 @@ class _MatMindFlowState extends State<MatMindFlow> {
             title: 'Соперник кажется сильнее',
             subtitle: 'Вернуть внимание к своей задаче',
             color: sand,
+            onTap: () => _show(AppPage.strongOpponent),
           ),
           _choiceCard(
             icon: Icons.replay,
             title: 'Я ошибся и замер',
             subtitle: 'Короткий reset и следующее действие',
             color: mint,
+            onTap: () => _show(AppPage.resetAfterError),
           ),
           _choiceCard(
             icon: Icons.circle_outlined,
             title: 'Я проиграл',
             subtitle: 'Сейчас или спокойный разбор позже',
             color: rose,
+            onTap: () => _show(AppPage.afterLoss),
           ),
           _choiceCard(
             icon: Icons.south_east,
             title: 'Я не хочу ехать',
             subtitle: 'Понять причину без стыда и давления',
             color: sand,
+            onTap: () => _show(AppPage.avoidCompetition),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _athleteNav(int selected) {
+    return NavigationBar(
+      selectedIndex: selected,
+      onDestinationSelected: (index) {
+        final page = switch (index) {
+          1 => AppPage.trainingHome,
+          2 => AppPage.journalHome,
+          3 => AppPage.profile,
+          _ => AppPage.athleteHome,
+        };
+        _show(page);
+      },
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.adjust), label: 'Сейчас'),
+        NavigationDestination(icon: Icon(Icons.psychology_outlined), label: 'Тренировки'),
+        NavigationDestination(icon: Icon(Icons.article_outlined), label: 'Дневник'),
+        NavigationDestination(icon: Icon(Icons.person_outline), label: 'Профиль'),
+      ],
+    );
+  }
+
+  Widget _strongOpponent() {
+    return _toolScreen(
+      eyebrow: 'СИЛЬНЫЙ СОПЕРНИК',
+      title: 'Ты увидел соперника — и уже начал проигрывать в голове',
+      subtitle: 'Внешность, пояс, клуб или прошлые победы соперника не определяют следующий эпизод.',
+      color: sand,
+      icon: Icons.person_search_outlined,
+      steps: const [
+        ('Отдели факт от прогноза', 'Факт: соперник кажется сильным. Прогноз: «у меня нет шансов». Это не одно и то же.'),
+        ('Верни контроль', 'Назови три вещи, которые зависят от тебя: стойка, первый контакт и продолжение после ошибки.'),
+        ('Сузь задачу', 'Не побеждай его заранее. Представь только первые 10 секунд и своё первое действие.'),
+      ],
+      phrase: 'Мне не нужно знать, кто сильнее. Мне нужно войти в первый эпизод.',
+      button: 'Вернуться к своей задаче',
+    );
+  }
+
+  Widget _resetAfterError() {
+    return _toolScreen(
+      eyebrow: 'RESET ПОСЛЕ ОШИБКИ',
+      title: 'Ошибка уже произошла. Схватка ещё продолжается',
+      subtitle: 'Reset нужен не для того, чтобы забыть ошибку, а чтобы снова получить доступ к следующему действию.',
+      color: mint,
+      icon: Icons.replay,
+      steps: const [
+        ('Заметь', 'Коротко назови: «ошибка была». Не спорь с ней и не разбирай её прямо сейчас.'),
+        ('Верни тело', 'Один выдох, опора стопами или ладонями, подбородок и позиция корпуса.'),
+        ('Следующее действие', 'Спроси себя: что нужно сделать в ближайшие две секунды? Защититься, вернуть позицию или продолжить движение.'),
+      ],
+      phrase: 'Не исправить прошлое. Сделать следующее действие.',
+      button: 'Я снова в схватке',
+    );
+  }
+
+  Widget _afterLoss() {
+    return _toolScreen(
+      eyebrow: 'ПОСЛЕ ПОРАЖЕНИЯ',
+      title: 'Сейчас не обязательно всё разбирать',
+      subtitle: 'Первые минуты после поражения — не экзамен на силу характера. Сначала нужно вернуть устойчивость.',
+      color: rose,
+      icon: Icons.circle_outlined,
+      steps: const [
+        ('Вернись в настоящее', 'Почувствуй опору, оглянись вокруг и сделай спокойный выдох.'),
+        ('Отдели себя от результата', 'Ты проиграл одну схватку. Это событие, а не определение тебя как спортсмена.'),
+        ('Выбери, что нужно сейчас', 'Побыть одному, позвать взрослого, поддержать товарища или отложить разговор.'),
+        ('Разбор — позже', 'Когда напряжение снизится: один полезный момент и одно изменение на тренировку. Не список обвинений.'),
+      ],
+      phrase: 'Результат уже случился. Моё развитие продолжается.',
+      button: 'Вернуться на главный экран',
+    );
+  }
+
+  Widget _avoidCompetition() {
+    const reasons = [
+      'Боюсь соперника или проигрыша',
+      'Боюсь разочаровать взрослых',
+      'Сильно устал или не восстановился',
+      'Есть конфликт в клубе или команде',
+      'Есть боль или возможная травма',
+      'Сам не понимаю причину',
+    ];
+    final injury = _avoidReason == 'Есть боль или возможная травма';
+    return _shell(
+      back: true,
+      eyebrow: 'НЕ ХОЧУ ЕХАТЬ',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading(
+            'Отказ — это сигнал, а не доказательство слабости',
+            'Сначала попробуем понять причину. После этого будет легче выбрать следующий шаг.',
+          ),
+          for (final reason in reasons)
+            _selectTile(
+              text: reason,
+              selected: _avoidReason == reason,
+              onTap: () => setState(() => _avoidReason = reason),
+            ),
+          if (_avoidReason != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(17),
+              decoration: BoxDecoration(
+                color: injury ? rose : mint,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                injury
+                    ? 'Не нужно заставлять себя выступать через боль. Скажи родителю, тренеру или другому взрослому и попроси оценить травму.'
+                    : 'Следующий шаг — не заставить себя замолчать. Скажи доверенному взрослому: «Я не просто ленюсь. Мне трудно, и я хочу объяснить почему».',
+                style: TextStyle(
+                  color: injury ? const Color(0xFF744947) : const Color(0xFF42625B),
+                  height: 1.45,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _primaryButton('Я понял следующий шаг', () => _show(AppPage.athleteHome)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _toolScreen({
+    required String eyebrow,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required IconData icon,
+    required List<(String, String)> steps,
+    required String phrase,
+    required String button,
+  }) {
+    return _shell(
+      back: true,
+      eyebrow: eyebrow,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            margin: const EdgeInsets.only(bottom: 18),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
+            child: Icon(icon, color: ink, size: 29),
+          ),
+          _heading(title, subtitle),
+          for (var i = 0; i < steps.length; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 11),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFFD4DFE2)),
+                borderRadius: BorderRadius.circular(19),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: color,
+                    foregroundColor: ink,
+                    child: Text('${i + 1}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(steps[i].$1, style: const TextStyle(color: ink, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(steps[i].$2, style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+            child: Text(
+              '«$phrase»',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: ink, fontSize: 17, height: 1.4, fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _primaryButton(button, () => _show(AppPage.athleteHome)),
+        ],
+      ),
+    );
+  }
+
+  Widget _trainingHome() {
+    const trainings = [
+      ('Фокус под давлением', '3 минуты', Icons.center_focus_strong, 'Сужаем внимание до контролируемой задачи.'),
+      ('Reset после ошибки', '2 минуты', Icons.replay, 'Тренируем быстрый возврат к следующему действию.'),
+      ('Уверенность без гарантий', '4 минуты', Icons.shield_outlined, 'Опора на подготовку, а не на обещание победы.'),
+      ('Рабочее возбуждение', '3 минуты', Icons.bolt, 'Учимся немного снижать или поднимать энергию.'),
+      ('Репетиция первого эпизода', '5 минут', Icons.visibility_outlined, 'Представляем начало схватки без фантазии о результате.'),
+    ];
+    return _shell(
+      eyebrow: '${_completedTrainings.length} ОСВОЕНО',
+      bottom: _athleteNav(1),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading('Психологические тренировки', 'Короткие упражнения между обычными тренировками — не только перед соревнованием.'),
+          for (final item in trainings)
+            _choiceCard(
+              icon: item.$3,
+              title: item.$1,
+              subtitle: '${item.$2} · ${item.$4}',
+              color: _completedTrainings.contains(item.$1) ? mint : sand,
+              onTap: () {
+                setState(() => _trainingTitle = item.$1);
+                _show(AppPage.trainingDetail);
+              },
+            ),
+          _notice('Здесь нет серии, которая обнулится за пропуск. Важно возвращаться к инструментам тогда, когда они нужны.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _trainingDetail() {
+    final title = _trainingTitle ?? 'Фокус под давлением';
+    const content = {
+      'Фокус под давлением': ('Выбери один внешний ориентир, один телесный сигнал и одну задачу. Удерживай их по очереди по 20 секунд.', 'Моё внимание возвращается к задаче.'),
+      'Reset после ошибки': ('Пять раз мысленно пройди связку: заметил ошибку — выдохнул — нашёл опору — выбрал следующее действие.', 'Следующий эпизод важнее прошлого.'),
+      'Уверенность без гарантий': ('Назови три вещи, которые ты уже делал на тренировках, и одно действие, которое готов выполнить под давлением.', 'Мне не нужна гарантия, чтобы начать действовать.'),
+      'Рабочее возбуждение': ('Оцени энергию от 1 до 5. Если выше рабочей — удлини выдох и расслабь плечи. Если ниже — выпрямись, ускорь шаг и назови задачу вслух.', 'Я могу немного менять своё состояние.'),
+      'Репетиция первого эпизода': ('Представь только выход, стойку, дистанцию, первый контакт и своё безопасное продолжение. Останови образ до результата.', 'Я репетирую действие, а не медаль.'),
+    };
+    final item = content[title]!;
+    final done = _completedTrainings.contains(title);
+    return _shell(
+      back: true,
+      eyebrow: 'ЕЖЕДНЕВНАЯ ПРАКТИКА',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _pill(done ? 'Уже выполнено' : '3–5 минут'),
+          const SizedBox(height: 14),
+          _heading(title, 'Выполняй спокойно. Цель — не идеальное состояние, а повторяемый навык.'),
+          Container(
+            padding: const EdgeInsets.all(19),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFD4DFE2))),
+            child: Text(item.$1, style: Theme.of(context).textTheme.bodyLarge),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: mint, borderRadius: BorderRadius.circular(20)),
+            child: Text('«${item.$2}»', textAlign: TextAlign.center, style: const TextStyle(color: ink, fontWeight: FontWeight.w700, fontSize: 17)),
+          ),
+          const SizedBox(height: 24),
+          _primaryButton(done ? 'Вернуться к тренировкам' : 'Отметить как выполненное', () {
+            setState(() => _completedTrainings.add(title));
+            _show(AppPage.trainingHome);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _journalHome() {
+    return _shell(
+      eyebrow: 'ЛИЧНОЕ ПРОСТРАНСТВО',
+      bottom: _athleteNav(2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading('Дневник спортсмена', 'Сохраняй не только результат, а то, что поможет на следующем турнире.'),
+          _notice('Эти записи не показываются родителю или тренеру автоматически.'),
+          const SizedBox(height: 18),
+          if (_journalNotes.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFD4DFE2))),
+              child: Column(
+                children: [
+                  const Icon(Icons.edit_note, size: 46, color: blue),
+                  const SizedBox(height: 10),
+                  const Text('Пока нет записей', style: TextStyle(color: ink, fontWeight: FontWeight.w800, fontSize: 18)),
+                  const SizedBox(height: 6),
+                  Text('Первая запись может состоять всего из одного полезного момента.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+                ],
+              ),
+            )
+          else
+            for (var i = _journalNotes.length - 1; i >= 0; i--)
+              Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                color: Colors.white,
+                child: ListTile(
+                  leading: const CircleAvatar(backgroundColor: mint, child: Icon(Icons.article_outlined, color: ink)),
+                  title: Text(_journalNotes[i], maxLines: 3, overflow: TextOverflow.ellipsis),
+                  subtitle: Text('Запись ${i + 1} · только на этом устройстве'),
+                  trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => _journalNotes.removeAt(i))),
+                ),
+              ),
+          const SizedBox(height: 18),
+          _primaryButton('Добавить запись', () {
+            _journalController.clear();
+            _show(AppPage.journalNew);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _journalNew() {
+    return _shell(
+      back: true,
+      eyebrow: 'НОВАЯ ЗАПИСЬ',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading('Что стоит сохранить?', 'Не нужно описывать весь турнир. Достаточно одного момента и одного следующего шага.'),
+          TextField(
+            controller: _journalController,
+            minLines: 6,
+            maxLines: 10,
+            maxLength: 500,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Например: после первой ошибки я остановился. На тренировке хочу пять раз отработать быстрый reset…',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _primaryButton(
+            'Сохранить запись',
+            _journalController.text.trim().isEmpty
+                ? null
+                : () {
+                    setState(() => _journalNotes.add(_journalController.text.trim()));
+                    _show(AppPage.journalHome);
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _profile() {
+    final age = switch (_ageBand) { 10 => '10–12 лет', 16 => '16–17 лет', _ => '13–15 лет' };
+    return _shell(
+      eyebrow: 'АЛЬФА 0.2.0',
+      bottom: _athleteNav(3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading('Профиль', 'Настройки спортсмена и понятные границы приватности.'),
+          _profileRow(Icons.cake_outlined, 'Возрастная версия', age),
+          _profileRow(Icons.sports_martial_arts, 'Виды спорта', _sports.join(', ')),
+          _profileRow(Icons.psychology_outlined, 'Освоено тренировок', '${_completedTrainings.length}'),
+          _profileRow(Icons.article_outlined, 'Записей в дневнике', '${_journalNotes.length}'),
+          const SizedBox(height: 12),
+          _notice('Дневник пока хранится только в памяти текущей alpha-сессии. В следующей версии добавим защищённое локальное сохранение.'),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                _ageBand = null;
+                _sports
+                  ..clear()
+                  ..add('BJJ');
+                _activation = null;
+                _goal = null;
+              });
+              _show(AppPage.welcome);
+            },
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('Пройти настройку заново'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileRow(IconData icon, String label, String value) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 9),
+      child: ListTile(
+        leading: CircleAvatar(backgroundColor: mint, child: Icon(icon, color: ink)),
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(value),
       ),
     );
   }
